@@ -2,14 +2,15 @@
 #include <MsgPack.h>
 #include <WiFi101.h>
 #include <SPI.h>
+#include <globals.h>
 
 const int pwmPin_right = 9;     // 用于PWM输出的引脚
 const int highPin_right = 8;    // 持续输出HIGH的引脚
 const int pwmPin_left = 10;     // 用于PWM输出的引脚
 const int highPin_left = 11;    // 持续输出HIGH的引脚
 
-char ssid[] = "Fred's iPhone"; // your network SSID (name)
-char pass[] = "20242024"; // your network password
+char ssid[] = "Marios"; // your network SSID (name)
+char pass[] = "gamomanes123"; // your network password
 
 WiFiServer server(1234); // Using port 1234 for testing purposes
 
@@ -59,7 +60,7 @@ void loop() {
   // analogWrite(pwmPin_right, 255);  // 127/255 ≈ 50% 占空比
   WiFiClient client = server.available();
   if (client) {
-    Serial.print("Connected!");
+    Serial.print("Connected!\n");
 
     const size_t bufSize = 64;
     uint8_t buffer[bufSize];
@@ -67,9 +68,43 @@ void loop() {
     while (client.connected() && client.available() == 0);
     while (client.available() && bytesRead < bufSize) {
       buffer[bytesRead++] = client.read();
-    }    
+    }
 
+    // Debug: Print raw bytes received
+    Serial.print("Raw bytes received (hex): ");
+    for (size_t i = 0; i < bytesRead; i++) {
+      if (buffer[i] < 16) Serial.print("0"); // Pad single-digit hex numbers
+      Serial.print(buffer[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+    
+    MsgPack::Unpacker unpacker;
+    unpacker.feed(buffer, bufSize);
 
+    MotorCommand cmd;
+    int pwmL, pwmR, dirL, dirR;
+    if (unpacker.from_array(pwmL, pwmR, dirL, dirR)) {
+      Serial.print("L: "); Serial.print(pwmL);
+      Serial.print(" R: "); Serial.print(pwmR);
+      Serial.print(" dL: "); Serial.print(dirL);
+      Serial.print(" dR: "); Serial.println(dirR);
+      // → now drive your motors...
+    } else {
+      Serial.println("Failed to unpack motor command");
+    }
+
+    // motorCommand.pwm_left = pwmL;
+    // motorCommand.pwm_right = pwmR;
+    // motorCommand.dir_left = dirL;
+    // motorCommand.dir_right = dirR;
+
+    // analogWrite(pwmPin_right, pwmR);
+    // digitalWrite(highPin_right, dirR);
+    // analogWrite(pwmPin_left, pwmL);
+    // digitalWrite(highPin_left, dirL);
+
+    delay(1000); // 等待1秒
   }
 }
 
@@ -82,7 +117,8 @@ int myFunction(int x, int y) {
 void printWiFiStatus() {
   // 打印IP地址
   Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
+  IPAddress ip = WiFi.localIP();
+  Serial.println(ip);
 
   // 打印信号强度
   long rssi = WiFi.RSSI();
