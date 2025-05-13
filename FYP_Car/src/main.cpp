@@ -1,128 +1,124 @@
 #include <Arduino.h>
-#include <MsgPack.h>
 #include <WiFi101.h>
+#include <WiFiUdp.h>
 #include <SPI.h>
-#include <globals.h>
 
-const int pwmPin_right = 9;     // 用于PWM输出的引脚
-const int highPin_right = 8;    // 持续输出HIGH的引脚
-const int pwmPin_left = 10;     // 用于PWM输出的引脚
-const int highPin_left = 11;    // 持续输出HIGH的引脚
+// —— 硬件接线参数 ——
+const int pwmPin_right = 9;
+const int dirPin_right = 8;
+const int pwmPin_left  = 0;
+const int dirPin_left  = 1;
 
-char ssid[] = "Marios"; // your network SSID (name)
-char pass[] = "gamomanes123"; // your network password
+// —— WiFi & UDP 设置 ——
+char ssid[] = "Marios";
+char pass[] = "gamomanes123";
+WiFiUDP Udp;
+const unsigned int localUdpPort = 1234;
 
-WiFiServer server(1234); // Using port 1234 for testing purposes
+// —— 超时停机设置 ——
+unsigned long lastRxTime = 0;
+const unsigned long RX_TIMEOUT = 500;  // ms
 
-int status = WL_IDLE_STATUS; // the WiFi radio's status
-
-// put function declarations here:
-int myFunction(int, int);
-void printWiFiStatus();
+void printWiFiStatus() {
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP: "); Serial.println(ip);
+  long rssi = WiFi.RSSI();
+  Serial.print("RSSI: "); Serial.print(rssi); Serial.println(" dBm");
+}
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  while (!Serial);  // 等待 USB 串口就绪（仅原生 USB 板）
 
-  // Check for the WiFi shield:
-  if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("Fuck you Wifi");
-    while (true);
-  }
-  
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network
-    status = WiFi.begin(ssid, pass);
+  // 连接 WiFi
+  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    Serial.println("Connecting to WiFi...");
     delay(1000);
   }
-  Serial.println("Gooooooooooooood!");
-  server.begin();
+  Serial.println("WiFi connected!");
   printWiFiStatus();
 
+  // 开始监听 UDP
+  if (!Udp.begin(localUdpPort)) {
+    Serial.println("UDP begin failed!");
+    while (1) delay(1000);
+  }
+  Serial.printf("Listening UDP on port %u\n", localUdpPort);
 
-  int result = myFunction(2, 3);
-
-
+  // 设置输出脚
+  pinMode(pwmPin_left,  OUTPUT);
+  pinMode(dirPin_left,  OUTPUT);
   pinMode(pwmPin_right, OUTPUT);
-  pinMode(highPin_right, OUTPUT);
+  pinMode(dirPin_right, OUTPUT);
 
-  pinMode(pwmPin_left, OUTPUT);
-  pinMode(highPin_left, OUTPUT);
+  lastRxTime = millis();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  // analogWrite(pwmPin_right, 255);  // 127/255 ≈ 50% 占空比
-  WiFiClient client = server.available();
-  if (client) {
-    Serial.print("Connected!\n");
-
-    const size_t bufSize = 64;
-    uint8_t buffer[bufSize];
-    size_t bytesRead = 0;
-    while (client.connected() && client.available() == 0);
-    while (client.available() && bytesRead < bufSize) {
-      buffer[bytesRead++] = client.read();
+  // —— 1. WiFi 掉线检测（可选） ——  
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi lost. Stopping motors and retrying WiFi...");
+    // 立刻停机
+    analogWrite(pwmPin_left,  0);
+    digitalWrite(dirPin_left,  LOW);
+    analogWrite(pwmPin_right, 0);
+    digitalWrite(dirPin_right, LOW);
+    // 然后尝试重连
+    if (WiFi.begin(ssid, pass) == WL_CONNECTED) {
+      Serial.println("WiFi reconnected!");
+      printWiFiStatus();
+      lastRxTime = millis();
     }
+    delay(1000);
+    return;  // this iteration done
+  }
 
-    // Debug: Print raw bytes received
-    Serial.print("Raw bytes received (hex): ");
-    for (size_t i = 0; i < bytesRead; i++) {
-      if (buffer[i] < 16) Serial.print("0"); // Pad single-digit hex numbers
-      Serial.print(buffer[i], HEX);
-      Serial.print(" ");
+  // —— 2. 检查有没有 UDP 包 ——  
+  int packetSize = Udp.parsePacket();
+  Serial.print("parsePacket() -> "); Serial.println(packetSize);
+
+  if (packetSize > 0) {
+    // 收到包，更新超时计时
+    lastRxTime = millis();
+
+    // 读数据
+    uint8_t buf[32];
+    int len = Udp.read(buf, sizeof(buf));
+    Serial.printf("Read %d bytes: ", len);
+    for (int i = 0; i < len; i++) {
+      Serial.printf("%02X ", buf[i]);
     }
     Serial.println();
-    
-    MsgPack::Unpacker unpacker;
-    unpacker.feed(buffer, bufSize);
 
-    MotorCommand cmd;
-    int pwmL, pwmR, dirL, dirR;
-    if (unpacker.from_array(pwmL, pwmR, dirL, dirR)) {
-      Serial.print("L: "); Serial.print(pwmL);
-      Serial.print(" R: "); Serial.print(pwmR);
-      Serial.print(" dL: "); Serial.print(dirL);
-      Serial.print(" dR: "); Serial.println(dirR);
-      // → now drive your motors...
+    // 找起始字节 0x0F
+    int idx = 0;
+    while (idx < len && buf[idx] != 0x0F) idx++;
+    if (idx + 4 < len) {
+      uint8_t pwmL = buf[idx+1];
+      uint8_t pwmR = buf[idx+2];
+      uint8_t dL   = buf[idx+3];
+      uint8_t dR   = buf[idx+4];
+      Serial.printf("Cmd -> L_pwm:%u R_pwm:%u dL:%u dR:%u\n",
+                    pwmL, pwmR, dL, dR);
+      // 驱动
+      analogWrite(pwmPin_left,  pwmL);
+      digitalWrite(dirPin_left,  dL ? HIGH : LOW);
+      analogWrite(pwmPin_right, pwmR);
+      digitalWrite(dirPin_right, dR ? HIGH : LOW);
     } else {
-      Serial.println("Failed to unpack motor command");
+      Serial.println("Malformed payload! (no 0x0F+4 bytes)");
     }
-
-    // motorCommand.pwm_left = pwmL;
-    // motorCommand.pwm_right = pwmR;
-    // motorCommand.dir_left = dirL;
-    // motorCommand.dir_right = dirR;
-
-    // analogWrite(pwmPin_right, pwmR);
-    // digitalWrite(highPin_right, dirR);
-    // analogWrite(pwmPin_left, pwmL);
-    // digitalWrite(highPin_left, dirL);
-
-    delay(1000); // 等待1秒
   }
-}
+  // —— 3. 超时停机 ——  
+  else if (millis() - lastRxTime > RX_TIMEOUT) {
+    Serial.println("RX timeout — stopping motors");
+    analogWrite(pwmPin_left,  0);
+    digitalWrite(dirPin_left,  LOW);
+    analogWrite(pwmPin_right, 0);
+    digitalWrite(dirPin_right, LOW);
+    // 注意：不要重置 lastRxTime！让它继续算
+  }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
-}
-
-// 打印连接状态信息
-void printWiFiStatus() {
-  // 打印IP地址
-  Serial.print("IP: ");
-  IPAddress ip = WiFi.localIP();
-  Serial.println(ip);
-
-  // 打印信号强度
-  long rssi = WiFi.RSSI();
-  Serial.print("RSSI: ");
-  Serial.print(rssi);
-  Serial.println(" dBm");
+  // —— 4. 小延时 ——  
+  delay(20);
 }
