@@ -1,5 +1,5 @@
-#ifndef __GLOABALS_H__
-#define __GLOABALS_H__
+#ifndef __GLOBALS_H__
+#define __GLOBALS_H__
 
 #include <Arduino.h>
 #include <MsgPack.h>

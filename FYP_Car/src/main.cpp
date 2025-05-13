@@ -8,6 +8,7 @@ const int pwmPin_right = 9;
 const int dirPin_right = 8;
 const int pwmPin_left  = 0;
 const int dirPin_left  = 1;
+const int ProxSensor   = 3;
 
 // —— WiFi & UDP 设置 ——
 char ssid[] = "Marios";
@@ -52,6 +53,8 @@ void setup() {
   pinMode(dirPin_right, OUTPUT);
 
   lastRxTime = millis();
+
+  pinMode(3 , OUTPUT);
 }
 
 void loop() {
