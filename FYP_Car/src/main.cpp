@@ -2,13 +2,16 @@
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 #include <SPI.h>
+#include <freq.h>
 
-// —— 硬件接线参数 ——
 const int pwmPin_right = 9;
 const int dirPin_right = 8;
 const int pwmPin_left  = 0;
 const int dirPin_left  = 1;
 const int ProxSensor   = 3;
+const int SIGNAL_PIN = 6;
+
+bool debug = true;
 
 // —— WiFi & UDP 设置 ——
 char ssid[] = "Marios";
@@ -31,20 +34,23 @@ void setup() {
   Serial.begin(9600);
   while (!Serial);  // 等待 USB 串口就绪（仅原生 USB 板）
 
-  // 连接 WiFi
-  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
-    Serial.println("Connecting to WiFi...");
-    delay(1000);
-  }
-  Serial.println("WiFi connected!");
-  printWiFiStatus();
 
-  // 开始监听 UDP
-  if (!Udp.begin(localUdpPort)) {
-    Serial.println("UDP begin failed!");
-    while (1) delay(1000);
+  if (!debug) {
+    // 连接 WiFi
+    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+      Serial.println("Connecting to WiFi...");
+      delay(1000);
+    }
+    Serial.println("WiFi connected!");
+    printWiFiStatus();
+
+    // 开始监听 UDP
+    if (!Udp.begin(localUdpPort)) {
+      Serial.println("UDP begin failed!");
+      while (1) delay(1000);
+    }
+    Serial.printf("Listening UDP on port %u\n", localUdpPort);
   }
-  Serial.printf("Listening UDP on port %u\n", localUdpPort);
 
   // 设置输出脚
   pinMode(pwmPin_left,  OUTPUT);
@@ -55,9 +61,11 @@ void setup() {
   lastRxTime = millis();
 
   pinMode(3 , OUTPUT);
+  pinMode(SIGNAL_PIN, INPUT);
 }
 
 void loop() {
+  if (!debug) { // This one is for debugging, set to false to disable wifi
   // —— 1. WiFi 掉线检测（可选） ——  
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi lost. Stopping motors and retrying WiFi...");
@@ -122,6 +130,11 @@ void loop() {
     // 注意：不要重置 lastRxTime！让它继续算
   }
 
-  // —— 4. 小延时 ——  
+  }
+  
+  if (debug) {
+    freq_detection(SIGNAL_PIN);
+  }
+  
   delay(20);
 }
