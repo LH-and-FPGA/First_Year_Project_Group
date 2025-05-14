@@ -138,3 +138,7 @@ void loop() {
   
   delay(20);
 }
+
+
+// TODO: we need to use FreeRTOS to prevent blocking
+// TODO: we need to create global variables for the ducks
