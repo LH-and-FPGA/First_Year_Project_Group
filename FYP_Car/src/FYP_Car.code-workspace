@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "waterere",
+			"path": "../../../../PlatformIO/Projects/waterere"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"typeinfo": "cpp"
+		}
+	}
+}
