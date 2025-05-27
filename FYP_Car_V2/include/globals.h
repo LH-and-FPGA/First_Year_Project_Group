@@ -7,3 +7,9 @@
 
 extern WiFiUDP Udp;
 extern const unsigned int localUdpPort;
+
+extern float rfFrequency;
+extern float irFrequency;
+extern int magneticDirection;
+extern String deviceName;
+

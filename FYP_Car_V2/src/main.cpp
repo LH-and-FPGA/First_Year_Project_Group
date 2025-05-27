@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "globals.h"
 #include "udp_comm.h"
 #include "motor.h"
 #include "wifi.h"
@@ -9,6 +10,9 @@ int myFunction(int, int);
 const char* ssid = "KChou";
 const char* pass = "KCHOU0604";
 bool debug = false; // Set to true for debugging without WiFi
+
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 1000; // 每 1000ms 发送一次
 
 void setup() {
   // put your setup code here, to run once:
@@ -42,6 +46,17 @@ void loop() {
     if (udpTimeout(500)) {
       Serial.println("UDP timeout — stopping motors");
       stopMotors();
+    }
+    unsigned long now = millis();
+    if (now - lastSendTime >= sendInterval) {
+      lastSendTime = now;
+
+      // 示例更新数据（实际可替换为真实传感器数据）
+      rfFrequency += 0.1f;
+      irFrequency += 0.2f;
+      magneticDirection = (magneticDirection + 5) % 360;
+
+      sendStatusPacket();
     }
   }
 

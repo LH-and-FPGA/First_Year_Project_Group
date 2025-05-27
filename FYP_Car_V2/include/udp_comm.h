@@ -19,4 +19,6 @@ bool udpTimeout(unsigned long timeout_ms);
 // 停止接收（可选）
 void udpStop();
 
+void sendStatusPacket();
+
 #endif

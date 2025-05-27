@@ -51,3 +51,39 @@ bool udpTimeout(unsigned long timeout_ms) {
 void udpStop() {
   Udp.stop();
 }
+
+void sendStatusPacket() { // msgpack
+  // 打包数据
+  uint8_t buffer[64];
+  int index = 0;
+
+  // 添加识别符
+  buffer[index++] = 0xA5;
+
+  // RF Frequency (float)
+  memcpy(&buffer[index], &rfFrequency, sizeof(float));
+  index += sizeof(float);
+
+  // IR Frequency (float)
+  memcpy(&buffer[index], &irFrequency, sizeof(float));
+  index += sizeof(float);
+
+  // Magnetic Direction (int)
+  memcpy(&buffer[index], &magneticDirection, sizeof(int));
+  index += sizeof(int);
+
+  // Device Name (String, 16 bytes max)
+  int nameLen = deviceName.length();
+  nameLen = nameLen > 15 ? 15 : nameLen;
+  memcpy(&buffer[index], deviceName.c_str(), nameLen);
+  index += nameLen;
+  buffer[index++] = '\0';  // null terminator
+
+  // 发送数据（目标IP和端口需设置，示例为广播）
+  IPAddress remoteIp = IPAddress(255, 255, 255, 255);
+  unsigned int remotePort = 1235;
+
+  Udp.beginPacket(remoteIp, remotePort);
+  Udp.write(buffer, index);
+  Udp.endPacket();
+}
