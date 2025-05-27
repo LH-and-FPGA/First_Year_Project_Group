@@ -14,14 +14,17 @@ const int SIGNAL_PIN = 6;
 bool debug = true;
 
 // —— WiFi & UDP 设置 ——
-char ssid[] = "Marios";
-char pass[] = "gamomanes123";
+// char ssid[] = "Marios";
+char ssid[] = "dianboxi";
+// char pass[] = "gamomanes123";
+char pass[] = "guangsuqulvfeichuan";
 WiFiUDP Udp;
 const unsigned int localUdpPort = 1234;
 
 // —— 超时停机设置 ——
 unsigned long lastRxTime = 0;
 const unsigned long RX_TIMEOUT = 500;  // ms
+char duckName[5]; // 4 + 1 null terminator
 
 void printWiFiStatus() {
   IPAddress ip = WiFi.localIP();
@@ -30,9 +33,50 @@ void printWiFiStatus() {
   Serial.print("RSSI: "); Serial.print(rssi); Serial.println(" dBm");
 }
 
+#define RX_PIN 2
+#define BAUD_RATE 600
+#define BIT_DURATION (1000000 / BAUD_RATE)
+#define CHAR_BITS 10         // 1 start + 8 data + 1 stop
+#define NAME_LENGTH 4
+
+void waitForStartBit() {
+  while (digitalRead(RX_PIN) == HIGH) {
+  }
+  delayMicroseconds(BIT_DURATION / 2);
+}
+
+char readByte() {
+  char data = 0;
+
+  // 等待 Start Bit（假设已经检测到）
+  delayMicroseconds(BIT_DURATION); // Skip the start bit
+
+  for (int i = 0; i < 8; i++) {
+    bool bit = digitalRead(RX_PIN);
+    data |= (bit << i);  // LSB first
+    delayMicroseconds(BIT_DURATION);
+  }
+
+  // 跳过 Stop Bit
+  delayMicroseconds(BIT_DURATION);
+
+  return data;
+}
+
+void readDuckName(char* buffer) {
+  for (int i = 0; i < NAME_LENGTH; i++) {
+    waitForStartBit();
+    buffer[i] = readByte();
+  }
+  buffer[NAME_LENGTH] = '\0'; // Null-terminate 字符串
+}
+
+
+
+
 void setup() {
   Serial.begin(9600);
-  while (!Serial);  // 等待 USB 串口就绪（仅原生 USB 板）
+  while (!Serial);
 
 
   if (!debug) {
@@ -62,6 +106,7 @@ void setup() {
 
   pinMode(3 , OUTPUT);
   pinMode(SIGNAL_PIN, INPUT);
+  pinMode(RX_PIN, INPUT);
 }
 
 void loop() {
@@ -133,7 +178,10 @@ void loop() {
   }
   
   if (debug) {
-    freq_detection(SIGNAL_PIN);
+    // freq_detection(SIGNAL_PIN);
+    readDuckName(duckName);
+    Serial.print("Duck name: ");
+    Serial.println(duckName);
   }
   
   delay(20);
