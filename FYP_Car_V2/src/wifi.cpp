@@ -2,29 +2,25 @@
 #include <globals.h>
 #include <WiFiManager.h>
 
-#define RESET_WIFI_PIN 0  // GPIO0 = FLASH 按钮
-#define LONG_PRESS_TIME 2000  // 毫秒，长按2秒触发
-unsigned long buttonPressStart = 0;
-bool buttonHeld = false;
 
+static const bool forceResetWiFi = true;
 
 void setupWiFi() {
-  pinMode(RESET_WIFI_PIN, INPUT_PULLUP);  // FLASH 按钮为下拉低有效
-
   WiFiManager wm;
 
-  if (digitalRead(RESET_WIFI_PIN) == LOW) {
-    Serial.println("FLASH button held — resetting WiFi settings...");
+  if (forceResetWiFi) {
+    Serial.println("forceResetWiFi=true — resetting WiFi settings and entering AP mode...");
     wm.resetSettings();
-    bool res = wm.startConfigPortal("ESP8266-ResetAP");
-    if (!res) {
-      Serial.println("Failed to connect via config portal. Restarting...");
+    // 这里启动一个配置热点，SSID 你可以根据需要改
+    if (!wm.startConfigPortal("ESP8266-ResetAP")) {
+      Serial.println("Config portal failed, rebooting...");
       delay(3000);
       ESP.restart();
     }
-  } else {
-    bool res = wm.autoConnect("ESP8266-AutoConnect");
-    if (!res) {
+  }
+  else {
+    // 正常流程：先尝试自动连接
+    if (!wm.autoConnect("ESP8266-AutoConnect")) {
       Serial.println("AutoConnect failed. Restarting...");
       delay(3000);
       ESP.restart();
@@ -33,29 +29,6 @@ void setupWiFi() {
 
   Serial.println("WiFi connected!");
   printWiFiStatus();
-}
-
-void checkWiFiResetButton() {
-  static bool resetting = false; // 防止重复触发
-
-  if (resetting) return;
-
-  if (digitalRead(RESET_WIFI_PIN) == LOW) {
-    if (!buttonHeld) {
-      buttonPressStart = millis();
-      buttonHeld = true;
-    } else if (millis() - buttonPressStart >= LONG_PRESS_TIME) {
-      Serial.println("FLASH button long-pressed — resetting WiFi...");
-      resetting = true;  // 只触发一次
-
-      WiFiManager wm;
-      wm.resetSettings();
-      delay(500);
-      ESP.restart(); // 重启后会自动进入配置模式
-    }
-  } else {
-    buttonHeld = false;
-  }
 }
 
 

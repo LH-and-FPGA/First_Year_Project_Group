@@ -28,8 +28,6 @@ void setup() {
 }
 
 void loop() {
-  checkWiFiResetButton();
-
   if (!debug) {
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi lost. Stopping motors and retrying...");
@@ -51,7 +49,6 @@ void loop() {
     if (now - lastSendTime >= sendInterval) {
       lastSendTime = now;
 
-      // 示例更新数据（实际可替换为真实传感器数据）
       rfFrequency += 0.1f;
       irFrequency += 0.2f;
       magneticDirection = (magneticDirection + 5) % 360;

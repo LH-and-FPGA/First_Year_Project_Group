@@ -73,9 +73,9 @@ void sendStatusPacket() { // msgpack
   index += sizeof(int);
 
   // Device Name (String, 16 bytes max)
-  int nameLen = deviceName.length();
+  int nameLen = oh_my_duck_name_tilde.length();
   nameLen = nameLen > 15 ? 15 : nameLen;
-  memcpy(&buffer[index], deviceName.c_str(), nameLen);
+  memcpy(&buffer[index], oh_my_duck_name_tilde.c_str(), nameLen);
   index += nameLen;
   buffer[index++] = '\0';  // null terminator
 

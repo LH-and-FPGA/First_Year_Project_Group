@@ -11,7 +11,5 @@ void setupWiFi();
 bool isWiFiConnected();
 void tryReconnectWiFi();
 void printWiFiStatus();
-void checkWiFiResetButton(); 
-
 
 #endif
