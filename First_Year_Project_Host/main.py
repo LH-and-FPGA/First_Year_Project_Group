@@ -5,6 +5,7 @@ import time
 import threading
 import socket
 import struct
+import pygame
 
 # UDP
 SENSOR_UDP_PORT = 1235
@@ -41,6 +42,14 @@ class RobotControlGUI:
         # Current selection for sensor updates
         self.current_selected_row = None
 
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+        else:
+            self.joystick = None
+
         # Build UI
         self.setup_gui()
         self.sensor_rows = []
@@ -58,6 +67,7 @@ class RobotControlGUI:
 
         threading.Thread(target=self.send_packets, daemon=True).start()
         self.update_vel_labels()
+
 
     def setup_gui(self):
         frm = ttk.Frame(self.root, padding=10)
@@ -246,13 +256,21 @@ class RobotControlGUI:
         self.active_keys.discard(k)
 
     def update_vel_labels(self):
-        f, a = 0.0, 0.0
-        if 'w' in self.active_keys: f += self.VELOCITY_SCALE
-        if 's' in self.active_keys: f -= self.VELOCITY_SCALE
-        if 'd' in self.active_keys: a += self.VELOCITY_SCALE
-        if 'a' in self.active_keys: a -= self.VELOCITY_SCALE
-        f = np.clip(f, -1.0, 1.0)
-        a = np.clip(a, -1.0, 1.0)
+        f_kb, a_kb = 0.0, 0.0
+        if 'w' in self.active_keys: f_kb += self.VELOCITY_SCALE
+        if 's' in self.active_keys: f_kb -= self.VELOCITY_SCALE
+        if 'd' in self.active_keys: a_kb += self.VELOCITY_SCALE
+        if 'a' in self.active_keys: a_kb -= self.VELOCITY_SCALE
+
+        f_xbox, a_xbox = 0.0, 0.0
+        if self.joystick:
+            pygame.event.pump()
+            axis_y = self.joystick.get_axis(1)  # 上下
+            axis_x = self.joystick.get_axis(0)
+            f_xbox = -axis_y * self.VELOCITY_SCALE
+            a_xbox = axis_x * self.VELOCITY_SCALE
+        f = np.clip(f_kb + f_xbox, -1.0, 1.0)
+        a = np.clip(a_kb + a_xbox, -1.0, 1.0)
         self.velocities['forward'], self.velocities['angular'] = f, a
         self.lbl_fwd.config(text=f"{f:.2f}")
         self.lbl_ang.config(text=f"{a:.2f}")
@@ -261,12 +279,16 @@ class RobotControlGUI:
     def create_raw_packet(self):
         f = self.velocities['forward']
         a = self.velocities['angular']
-        left_val = f - a
-        right_val = f + a
+        left_val  = np.clip(f - a, -1.0, 1.0)
+        right_val = np.clip(f + a, -1.0, 1.0)
         dir_left = 1 if left_val >= 0 else 0
         dir_right = 0 if right_val >= 0 else 1
-        pwm_left = int(np.clip(abs(left_val) * 255, 0, 255))
-        pwm_right = int(np.clip(abs(right_val) * 255, 0, 255))
+        def to_pwm(v):
+            if abs(v) < 1e-6:
+                return 0
+            return int(np.clip(128 + abs(v) * (255 - 128), 128, 255))
+        pwm_left  = to_pwm(left_val)
+        pwm_right = to_pwm(right_val)
         payload_bytes = struct.pack('>4B', pwm_left, pwm_right, dir_left, dir_right)
         frame = b'\x0F' + payload_bytes
         return frame, [pwm_left, pwm_right, dir_left, dir_right]
