@@ -3,7 +3,7 @@
 #include <WiFiManager.h>
 
 
-static const bool forceResetWiFi = true;
+static const bool forceResetWiFi = false;
 
 void setupWiFi() {
   WiFiManager wm;
