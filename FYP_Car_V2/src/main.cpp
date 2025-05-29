@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ir.h>
 #include "globals.h"
 #include "udp_comm.h"
 #include "motor.h"
@@ -26,6 +27,10 @@ unsigned long lastMillis = 0;
 String name = "arb1";
 String last_name = "arb2";
 
+const int irPin = 2;
+int freq;
+unsigned long lastHigh = micros();
+
 void setup() {
   // put your setup code here, to run once:
   int result = myFunction(2, 3);
@@ -39,6 +44,9 @@ void setup() {
     initMotors();
     setupServos(servoPinL, servoPinR, servoL, servoR);
   }
+
+  Serial.begin(115200);
+  setupIR(irPin, lastHigh, freq);
 }
 
 void loop() {
@@ -82,6 +90,8 @@ void loop() {
   if (debug) {
 
   }
+
+  if (lastHigh + 1000000 > micros()) Serial.println(freq);
 
   delay(20);
 }
