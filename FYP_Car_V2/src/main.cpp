@@ -27,7 +27,7 @@ unsigned long lastMillis = 0;
 String name = "arb1";
 String last_name = "arb2";
 
-const int irPin = 2;
+const int irPin = 0;
 int freq;
 unsigned long lastHigh = micros();
 
@@ -43,10 +43,8 @@ void setup() {
     udpInit();
     initMotors();
     setupServos(servoPinL, servoPinR, servoL, servoR);
+    setupIR(irPin, lastHigh, freq);
   }
-
-  Serial.begin(115200);
-  setupIR(irPin, lastHigh, freq);
 }
 
 void loop() {
@@ -56,6 +54,12 @@ void loop() {
       oh_my_duck_name_tilde = name;
       Serial.print("Duck name: ");
       Serial.println(oh_my_duck_name_tilde);
+    }
+
+    /// IR handling
+    if (lastHigh + 1000000 > micros()) {
+      Serial.println(freq);
+      irFrequency = freq;
     }
 
     /// WiFi and UDP handling
@@ -80,7 +84,6 @@ void loop() {
       lastSendTime = now;
 
       rfFrequency += 0.1f;
-      irFrequency += 0.2f;
       magneticDirection = (magneticDirection + 5) % 360;
 
       sendStatusPacket();
@@ -91,7 +94,7 @@ void loop() {
 
   }
 
-  if (lastHigh + 1000000 > micros()) Serial.println(freq);
+  
 
   delay(20);
 }

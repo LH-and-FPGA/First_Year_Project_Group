@@ -1,15 +1,22 @@
 #include "ir.h"
 #include <Arduino.h>
 
+// make these visible everywhere:
+volatile unsigned long lastHigh = 0;
+volatile int freq = 0;
+
+ICACHE_RAM_ATTR
 void onIRRising() {
-    extern unsigned long lastHigh;
-    extern int freq;
-    unsigned long time = micros();
-    freq = 1e6/(time - lastHigh);
-    lastHigh = time;
+  unsigned long now = micros();
+  // avoid divide-by-zero on the first call
+  if (lastHigh != 0) {
+    freq = 1000000UL / (now - lastHigh);
+  }
+  lastHigh = now;
 }
 
-void setupIR(const int& pin, unsigned long& lastHigh, int& freq) {
+void setupIR(const int& pin) {
+    pinMode(pin, INPUT);
     attachInterrupt(digitalPinToInterrupt(pin), onIRRising, RISING);
 }
 
