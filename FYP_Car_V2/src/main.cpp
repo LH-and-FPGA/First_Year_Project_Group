@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ir.h>
 #include "globals.h"
 #include "udp_comm.h"
 #include "motor.h"
@@ -14,6 +15,10 @@ bool debug = false; // Set to true for debugging without WiFi
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 1000; // 每 1000ms 发送一次
 
+const int irPin = 2;
+int freq;
+unsigned long lastHigh = micros();
+
 void setup() {
   // put your setup code here, to run once:
   int result = myFunction(2, 3);
@@ -25,6 +30,9 @@ void setup() {
     udpInit();
     initMotors();
   }
+
+  Serial.begin(115200);
+  setupIR(irPin, lastHigh, freq);
 }
 
 void loop() {
@@ -60,6 +68,8 @@ void loop() {
   if (debug) {
 
   }
+
+  if (lastHigh + 1000000 > micros()) Serial.println(freq);
 
   delay(20);
 }
