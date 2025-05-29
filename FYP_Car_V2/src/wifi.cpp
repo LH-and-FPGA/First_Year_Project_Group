@@ -11,7 +11,6 @@ void setupWiFi() {
   if (forceResetWiFi) {
     Serial.println("forceResetWiFi=true — resetting WiFi settings and entering AP mode...");
     wm.resetSettings();
-    // 这里启动一个配置热点，SSID 你可以根据需要改
     if (!wm.startConfigPortal("ESP8266-ResetAP")) {
       Serial.println("Config portal failed, rebooting...");
       delay(3000);
@@ -19,7 +18,6 @@ void setupWiFi() {
     }
   }
   else {
-    // 正常流程：先尝试自动连接
     if (!wm.autoConnect("ESP8266-AutoConnect")) {
       Serial.println("AutoConnect failed. Restarting...");
       delay(3000);

@@ -1,6 +1,5 @@
 #include "motor.h"
 
-// NodeMCU V3 引脚映射
 const int pwmPin_left  = D2;  // GPIO4
 const int dirPin_left  = D1;  // GPIO5
 const int pwmPin_right = D6;  // GPIO12

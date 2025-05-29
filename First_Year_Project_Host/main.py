@@ -266,7 +266,9 @@ class RobotControlGUI:
         if self.joystick:
             pygame.event.pump()
             axis_y = self.joystick.get_axis(1)  # 上下
+            if abs(axis_y) < 0.1: axis_y = 0.0  # deadzone
             axis_x = self.joystick.get_axis(0)
+            if abs(axis_x) < 0.1: axis_x = 0.0
             f_xbox = -axis_y * self.VELOCITY_SCALE
             a_xbox = axis_x * self.VELOCITY_SCALE
         f = np.clip(f_kb + f_xbox, -1.0, 1.0)
