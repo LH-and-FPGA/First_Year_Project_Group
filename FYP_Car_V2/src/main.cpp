@@ -3,6 +3,7 @@
 #include "udp_comm.h"
 #include "motor.h"
 #include "wifi.h"
+#include "ultrasound.h"
 
 
 // put function declarations here:
@@ -12,23 +13,44 @@ const char* pass = "KCHOU0604";
 bool debug = false; // Set to true for debugging without WiFi
 
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 1000; // 每 1000ms 发送一次
+const unsigned long sendInterval = 500; // 每 1000ms 发送一次
+
+/// ultrasound stuff
+int servoPinR = 2;
+int servoPinL = 3;
+Servo servoL;
+Servo servoR;
+bool dir = false;
+int angle = 0;
+unsigned long lastMillis = 0;
+String name = "arb1";
+String last_name = "arb2";
 
 void setup() {
   // put your setup code here, to run once:
   int result = myFunction(2, 3);
   Serial.begin(9600);
+  Serial1.begin(600);
   while (!Serial);
 
   if (!debug) {
     setupWiFi();
     udpInit();
     initMotors();
+    setupServos(servoPinL, servoPinR, servoL, servoR);
   }
 }
 
 void loop() {
   if (!debug) {
+    /// Ultrasound handling
+    if (servoRead(name, last_name, lastMillis, servoL, servoR, angle, dir)) {
+      oh_my_duck_name_tilde = name;
+      Serial.print("Duck name: ");
+      Serial.println(oh_my_duck_name_tilde);
+    }
+
+    /// WiFi and UDP handling
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi lost. Stopping motors and retrying...");
       stopMotors();
