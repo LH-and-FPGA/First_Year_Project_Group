@@ -5,6 +5,7 @@
 #include "wifi.h"
 #include "ultrasound.h"
 #include "radio_freq.h"
+#include "ir.h"
 
 
 // put function declarations here:
@@ -27,16 +28,17 @@ unsigned long lastMillis = 0;
 String name = "arb1";
 String last_name = "arb2";
 
-const int irPin = 0;
-int freq;
-unsigned long lastHigh = micros();
+const int irPin = D1;
+//int freq;
+//unsigned long lastHigh = micros();
 
 // Radio frequency detector
 RadioFrequency radioFreq;
+IRFrequency irFreq;
 
 void setup() {
   // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  //int result = myFunction(2, 3);
   Serial.begin(9600);
   Serial1.begin(600);
   while (!Serial);
@@ -47,10 +49,12 @@ void setup() {
     initMotors();
     setupServos(servoPinL, servoPinR, servoL, servoR);
     radioFreq.begin();
+    irFreq.begin();
   }
 
   if (debug) {
     radioFreq.begin();
+    irFreq.begin();
   }
 }
 
@@ -63,10 +67,18 @@ void loop() {
       Serial.println(oh_my_duck_name_tilde);
     }
 
-    /// IR handling
-    if (lastHigh + 1000000 > micros()) {
-      Serial.println(freq);
-      irFrequency = freq;
+    /// IR frequency handling
+    irFreq.update();
+    if (irFreq.isDetected()) {
+      irFrequency = irFreq.getFrequency();
+      Serial.print("IR Freq: ");
+      Serial.print(irFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(irFrequency, 2);
+      Serial.println(" Hz)");
+    } else {
+      irFrequency = 0.0;
+      Serial.println("No IR frequency detected");
     }
 
     /// Radio frequency handling
@@ -124,13 +136,28 @@ void loop() {
       rfFrequency = 0.0;
       Serial.println("No radio frequency detected");
     }
+  
+
+  irFreq.update();
+    if (irFreq.isDetected()) {
+      irFrequency = irFreq.getFrequency();
+      Serial.print("IR Freq: ");
+      Serial.print(irFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(irFrequency, 2);
+      Serial.println(" Hz)");
+    } else {
+      rfFrequency = 0.0;
+      Serial.println("No IR frequency detected");
+    }
   }
   
   delay(20);
 }
 
-
+/*
 // put function definitions here:
 int myFunction(int x, int y) {
   return x + y;
 }
+*/
