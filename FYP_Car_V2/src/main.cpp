@@ -1,10 +1,10 @@
 #include <Arduino.h>
-#include <ir.h>
 #include "globals.h"
 #include "udp_comm.h"
 #include "motor.h"
 #include "wifi.h"
 #include "ultrasound.h"
+#include "radio_freq.h"
 
 
 // put function declarations here:
@@ -17,8 +17,8 @@ unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 500; // 每 1000ms 发送一次
 
 /// ultrasound stuff
-int servoPinR = 2;
-int servoPinL = 3;
+int servoPinR = 0;
+int servoPinL = 1;
 Servo servoL;
 Servo servoR;
 bool dir = false;
@@ -30,6 +30,9 @@ String last_name = "arb2";
 const int irPin = 0;
 int freq;
 unsigned long lastHigh = micros();
+
+// Radio frequency detector
+RadioFrequency radioFreq;
 
 void setup() {
   // put your setup code here, to run once:
@@ -43,7 +46,11 @@ void setup() {
     udpInit();
     initMotors();
     setupServos(servoPinL, servoPinR, servoL, servoR);
-    setupIR(irPin, lastHigh, freq);
+    radioFreq.begin();
+  }
+
+  if (debug) {
+    radioFreq.begin();
   }
 }
 
@@ -60,6 +67,20 @@ void loop() {
     if (lastHigh + 1000000 > micros()) {
       Serial.println(freq);
       irFrequency = freq;
+    }
+
+    /// Radio frequency handling
+    radioFreq.update();
+    if (radioFreq.isDetected()) {
+      rfFrequency = radioFreq.getFrequency();
+      Serial.print("Radio Freq: ");
+      Serial.print(radioFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(rfFrequency, 2);
+      Serial.println(" Hz)");
+    } else {
+      rfFrequency = 0.0;
+      Serial.println("No radio frequency detected");
     }
 
     /// WiFi and UDP handling
@@ -83,7 +104,7 @@ void loop() {
     if (now - lastSendTime >= sendInterval) {
       lastSendTime = now;
 
-      rfFrequency += 0.1f;
+      // rfFrequency is now updated by radio frequency detector
       magneticDirection = (magneticDirection + 5) % 360;
 
       sendStatusPacket();
@@ -91,11 +112,20 @@ void loop() {
   }
 
   if (debug) {
-
+    radioFreq.update();
+    if (radioFreq.isDetected()) {
+      rfFrequency = radioFreq.getFrequency();
+      Serial.print("Radio Freq: ");
+      Serial.print(radioFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(rfFrequency, 2);
+      Serial.println(" Hz)");
+    } else {
+      rfFrequency = 0.0;
+      Serial.println("No radio frequency detected");
+    }
   }
-
   
-
   delay(20);
 }
 
