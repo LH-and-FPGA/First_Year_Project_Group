@@ -14,11 +14,11 @@ const char* pass = "KCHOU0604";
 bool debug = false; // Set to true for debugging without WiFi
 
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 500; // 每 1000ms 发送一次
+const unsigned long sendInterval = 500;
 
 /// ultrasound stuff
-int servoPinR = 0;
-int servoPinL = 1;
+int servoPinR = D5;
+int servoPinL = D6;
 Servo servoL;
 Servo servoR;
 bool dir = false;
