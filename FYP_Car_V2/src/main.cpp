@@ -9,10 +9,10 @@
 
 
 // put function declarations here:
-int myFunction(int, int);
+//int myFunction(int, int);
 const char* ssid = "KChou";
 const char* pass = "KCHOU0604";
-bool debug = false; // Set to true for debugging without WiFi
+bool debug = true; // Set to true for debugging without WiFi
 
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 500;
@@ -38,7 +38,7 @@ IRFrequency irFreq;
 
 void setup() {
   // put your setup code here, to run once:
-  //int result = myFunction(2, 3);
+  // int result = myFunction(2, 3);
   Serial.begin(9600);
   Serial1.begin(600);
   while (!Serial);
@@ -77,8 +77,7 @@ void loop() {
       Serial.print(irFrequency, 2);
       Serial.println(" Hz)");
     } else {
-      irFrequency = 0.0;
-      Serial.println("No IR frequency detected");
+      //Serial.println("No IR frequency detected");
     }
 
     /// Radio frequency handling
@@ -91,8 +90,7 @@ void loop() {
       Serial.print(rfFrequency, 2);
       Serial.println(" Hz)");
     } else {
-      rfFrequency = 0.0;
-      Serial.println("No radio frequency detected");
+      //Serial.println("No radio frequency detected");
     }
 
     /// WiFi and UDP handling
@@ -124,6 +122,7 @@ void loop() {
   }
 
   if (debug) {
+    
     radioFreq.update();
     if (radioFreq.isDetected()) {
       rfFrequency = radioFreq.getFrequency();
@@ -134,7 +133,7 @@ void loop() {
       Serial.println(" Hz)");
     } else {
       rfFrequency = 0.0;
-      Serial.println("No radio frequency detected");
+      //Serial.println("No radio frequency detected");
     }
   
 
@@ -148,7 +147,7 @@ void loop() {
       Serial.println(" Hz)");
     } else {
       rfFrequency = 0.0;
-      Serial.println("No IR frequency detected");
+      //Serial.println("No IR frequency detected");
     }
   }
   
