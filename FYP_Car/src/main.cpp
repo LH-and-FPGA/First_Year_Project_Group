@@ -3,6 +3,8 @@
 #include <WiFiUdp.h>
 #include <SPI.h>
 #include <freq.h>
+#include "radio_freq.h"
+
 
 const int pwmPin_right = 9;
 const int dirPin_right = 8;
@@ -107,6 +109,10 @@ void setup() {
   pinMode(3 , OUTPUT);
   pinMode(SIGNAL_PIN, INPUT);
   pinMode(RX_PIN, INPUT);
+  if (debug) {
+    radioFreq.begin();
+
+  }
 }
 
 void loop() {
@@ -179,9 +185,21 @@ void loop() {
   
   if (debug) {
     // freq_detection(SIGNAL_PIN);
-    readDuckName(duckName);
-    Serial.print("Duck name: ");
-    Serial.println(duckName);
+    // readDuckName(duckName);
+    // Serial.print("Duck name: ");
+    // Serial.println(duckName);
+    radioFreq.update();
+    if (radioFreq.isDetected()) {
+      rfFrequency = radioFreq.getFrequency();
+      Serial.print("Radio Freq: ");
+      Serial.print(radioFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(rfFrequency, 2);
+      Serial.println(" Hz)");
+    } else {
+      rfFrequency = 0.0;
+      Serial.println("No radio frequency detected");
+    }
   }
   
   delay(20);
