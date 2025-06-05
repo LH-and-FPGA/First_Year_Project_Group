@@ -13,12 +13,6 @@ int irPin = 2;
 int IRfreq;
 unsigned long lastIRHigh = micros();
 
-void loop() {
-    Serial.println(IRfreq);
-    delay(1000);
-}
-
-
 void get_ambient_reading(){
   for (int i=0; i<50; i++){
     ambient += 10*analogRead(MagnetPin);
@@ -55,7 +49,7 @@ void loop() {
     else if((IRfreq < 303) && (IRfreq > 283)){
       Serial.println("Snorkle\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up");
     }else{
-      Serial.println("Nothing detected\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Down(False Positive)");
+      Serial.println("Nothing detected\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up(False Positive)");
     }
   }else if(magnet_direction<=ambient-15){
     if ((radioFreq < 110) && (radioFreq > 90)){
