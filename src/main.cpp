@@ -50,7 +50,7 @@ void loop() {
   float magnet_direction = get_magnet_direction();
   String field;
 
-  if (magnet_direction >= ambient + 25) {
+  if (magnet_direction >= ambient + 22) {
     field = "Up";
   } else if (magnet_direction <= ambient - 15) {
     field = "Down";

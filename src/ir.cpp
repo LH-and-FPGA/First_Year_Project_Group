@@ -1,19 +1,19 @@
 #include <Arduino.h>
 #include "ir.h"
 
-volatile int f[10], i = 0;
-volatile unsigned long l;
+volatile int fir[10], iir = 0;
+volatile unsigned long lir;
 
 void onIRRising() {
   extern int lastIRHigh;
   extern int IRfreq;
   unsigned long t = micros();
-  f[i++] = 1e6 / (t - l);
-  l = t;
-  if (i == 10) {
-    i = 0;
+  fir[iir++] = 1e6 / (t - lir);
+  lir = t;
+  if (iir == 10) {
+    iir = 0;
     int a[10];
-    for (int j = 0; j < 10; ++j) a[j] = f[j];
+    for (int j = 0; j < 10; ++j) a[j] = fir[j];
     for (int j = 0; j < 9; ++j)
       for (int k = 0; k < 9 - j; ++k)
         if (a[k] > a[k + 1]) {
@@ -24,10 +24,10 @@ void onIRRising() {
   lastIRHigh = t;
 }
 
-void setupIR(int p) {
-  attachInterrupt(digitalPinToInterrupt(p), onIRRising, RISING);
+void setupIR(const int& pin, unsigned long& lastIRHigh) {
+  attachInterrupt(digitalPinToInterrupt(pin), onIRRising, RISING);
 }
 
-void stopIR(int p) {
-  detachInterrupt(digitalPinToInterrupt(p));
+void stopIR(const int& pin) {
+  detachInterrupt(digitalPinToInterrupt(pin));
 }
