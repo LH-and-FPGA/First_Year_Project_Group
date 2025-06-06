@@ -1,18 +1,13 @@
-#ifndef __GLOBALS_H__
-#define __GLOBALS_H__
+#pragma once
 
 #include <Arduino.h>
-#include <MsgPack.h>
+#include <WiFi101.h>
+#include <WiFiUdp.h>
 
-struct MotorCommand {
-    int16_t pwm_left;
-    int16_t pwm_right;
-    int16_t dir_left;
-    int16_t dir_right;
+extern WiFiUDP Udp;
+extern const unsigned int localUdpPort;
 
-    MSGPACK_DEFINE(pwm_left, pwm_right, dir_left, dir_right);
-};
-
-extern MotorCommand motorCommand; // Declare the motor command structure
-
-#endif
+extern float rfFrequency;
+extern float irFrequency;
+extern int magneticDirection;
+extern String oh_my_duck_name_tilde;

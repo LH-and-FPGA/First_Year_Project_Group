@@ -29,7 +29,7 @@ public:
     unsigned long getTimeSinceLastDetected() const;
     bool isDetected() const { return lastDetectedTime > 0 && getTimeSinceLastDetected() < 1000; }
     
-    static void IRAM_ATTR onRisingEdge();
+    static void onRisingEdge();
 };
 
 #endif

@@ -14,7 +14,7 @@ void RadioFrequency::begin() {
     attachInterrupt(digitalPinToInterrupt(PULSE_PIN), onRisingEdge, RISING);
 }
 
-void IRAM_ATTR RadioFrequency::onRisingEdge() {
+void RadioFrequency::onRisingEdge() {
     unsigned long currentTime = micros();
     pulseInterval = currentTime - lastRiseTime;
     lastRiseTime = currentTime;
@@ -33,7 +33,6 @@ void RadioFrequency::update() {
         }
 
         if (count == BUFFER_SIZE) {
-            // Sort the array
             for (int i = 0; i < BUFFER_SIZE - 1; i++) {
                 for (int j = i + 1; j < BUFFER_SIZE; j++) {
                     if (intervals[i] > intervals[j]) {
@@ -44,7 +43,6 @@ void RadioFrequency::update() {
                 }
             }
 
-            // Find median
             unsigned long medianInterval;
             if (BUFFER_SIZE % 2 == 0) {
                 medianInterval = (intervals[BUFFER_SIZE/2 - 1] + intervals[BUFFER_SIZE/2]) / 2;
@@ -64,7 +62,7 @@ void RadioFrequency::update() {
                 detectedType = "None";
             }
             
-            count = 0; // Reset for next batch
+            count = 0;
         }
     }
 }

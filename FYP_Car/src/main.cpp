@@ -1,194 +1,102 @@
 #include <Arduino.h>
 #include <WiFi101.h>
-#include <WiFiUdp.h>
-#include <SPI.h>
-#include "ir.h"
-#include <freq.h>
+#include "globals.h"
+#include "udp_comm.h"
+#include "motor.h"
+#include "wifi_car.h"
+#include "ultrasound.h"
 #include "radio_freq.h"
 
+bool debug = false;
 
-const int pwmPin_right = 9;
-const int dirPin_right = 8;
-const int pwmPin_left  = 0;
-const int dirPin_left  = 1;
-const int ProxSensor   = 3;
-const int SIGNAL_PIN = 6;
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 500;
 
-bool debug = true;
+int servoPinR = 5;
+int servoPinL = 6;
+Servo servoL;
+Servo servoR;
+bool dir = false;
+int angle = 0;
+unsigned long lastMillis = 0;
+String name = "arb1";
+String last_name = "arb2";
 
-// —— WiFi & UDP 设置 ——
-// char ssid[] = "Marios";
-char ssid[] = "dianboxi";
-// char pass[] = "gamomanes123";
-char pass[] = "guangsuqulvfeichuan";
-WiFiUDP Udp;
-const unsigned int localUdpPort = 1234;
+const int irPin = 0;
+int freq;
+unsigned long lastHigh = micros();
 
-// —— 超时停机设置 ——
-unsigned long lastRxTime = 0;
-const unsigned long RX_TIMEOUT = 500;  // ms
-char duckName[5]; // 4 + 1 null terminator
-
-void printWiFiStatus() {
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP: "); Serial.println(ip);
-  long rssi = WiFi.RSSI();
-  Serial.print("RSSI: "); Serial.print(rssi); Serial.println(" dBm");
-}
-
-#define RX_PIN 2
-#define BAUD_RATE 600
-#define BIT_DURATION (1000000 / BAUD_RATE)
-#define CHAR_BITS 10         // 1 start + 8 data + 1 stop
-#define NAME_LENGTH 4
-
-void waitForStartBit() {
-  while (digitalRead(RX_PIN) == HIGH) {
-  }
-  delayMicroseconds(BIT_DURATION / 2);
-}
-
-char readByte() {
-  char data = 0;
-
-  // 等待 Start Bit（假设已经检测到）
-  delayMicroseconds(BIT_DURATION); // Skip the start bit
-
-  for (int i = 0; i < 8; i++) {
-    bool bit = digitalRead(RX_PIN);
-    data |= (bit << i);  // LSB first
-    delayMicroseconds(BIT_DURATION);
-  }
-
-  // 跳过 Stop Bit
-  delayMicroseconds(BIT_DURATION);
-
-  return data;
-}
-
-void readDuckName(char* buffer) {
-  for (int i = 0; i < NAME_LENGTH; i++) {
-    waitForStartBit();
-    buffer[i] = readByte();
-  }
-  buffer[NAME_LENGTH] = '\0'; // Null-terminate 字符串
-}
-
-
-
+RadioFrequency radioFreq;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
-
+  Serial1.begin(600);
+  while (!Serial && millis() < 3000);
 
   if (!debug) {
-    // 连接 WiFi
-    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
-      Serial.println("Connecting to WiFi...");
-      delay(1000);
-    }
-    Serial.println("WiFi connected!");
-    printWiFiStatus();
-
-    // 开始监听 UDP
-    if (!Udp.begin(localUdpPort)) {
-      Serial.println("UDP begin failed!");
-      while (1) delay(1000);
-    }
-    Serial.printf("Listening UDP on port %u\n", localUdpPort);
+    setupWiFi();
+    udpInit();
+    initMotors();
+    setupServos(servoPinL, servoPinR, servoL, servoR);
+    radioFreq.begin();
   }
 
-  // 设置输出脚
-  pinMode(pwmPin_left,  OUTPUT);
-  pinMode(dirPin_left,  OUTPUT);
-  pinMode(pwmPin_right, OUTPUT);
-  pinMode(dirPin_right, OUTPUT);
-
-  lastRxTime = millis();
-
-  pinMode(3 , OUTPUT);
-  pinMode(SIGNAL_PIN, INPUT);
-  pinMode(RX_PIN, INPUT);
   if (debug) {
     radioFreq.begin();
-
   }
 }
 
 void loop() {
-  if (!debug) { // This one is for debugging, set to false to disable wifi
-  // —— 1. WiFi 掉线检测（可选） ——  
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi lost. Stopping motors and retrying WiFi...");
-    // 立刻停机
-    analogWrite(pwmPin_left,  0);
-    digitalWrite(dirPin_left,  LOW);
-    analogWrite(pwmPin_right, 0);
-    digitalWrite(dirPin_right, LOW);
-    // 然后尝试重连
-    if (WiFi.begin(ssid, pass) == WL_CONNECTED) {
-      Serial.println("WiFi reconnected!");
-      printWiFiStatus();
-      lastRxTime = millis();
+  if (!debug) {
+    if (servoRead(name, last_name, lastMillis, servoL, servoR, angle, dir)) {
+      oh_my_duck_name_tilde = name;
+      Serial.print("Duck name: ");
+      Serial.println(oh_my_duck_name_tilde);
     }
-    delay(1000);
-    return;  // this iteration done
-  }
 
-  // —— 2. 检查有没有 UDP 包 ——  
-  int packetSize = Udp.parsePacket();
-  Serial.print("parsePacket() -> "); Serial.println(packetSize);
-
-  if (packetSize > 0) {
-    // 收到包，更新超时计时
-    lastRxTime = millis();
-
-    // 读数据
-    uint8_t buf[32];
-    int len = Udp.read(buf, sizeof(buf));
-    Serial.printf("Read %d bytes: ", len);
-    for (int i = 0; i < len; i++) {
-      Serial.printf("%02X ", buf[i]);
+    if (lastHigh + 1000000 > micros()) {
+      Serial.println(freq);
+      irFrequency = freq;
     }
-    Serial.println();
 
-    // 找起始字节 0x0F
-    int idx = 0;
-    while (idx < len && buf[idx] != 0x0F) idx++;
-    if (idx + 4 < len) {
-      uint8_t pwmL = buf[idx+1];
-      uint8_t pwmR = buf[idx+2];
-      uint8_t dL   = buf[idx+3];
-      uint8_t dR   = buf[idx+4];
-      Serial.printf("Cmd -> L_pwm:%u R_pwm:%u dL:%u dR:%u\n",
-                    pwmL, pwmR, dL, dR);
-      // 驱动
-      analogWrite(pwmPin_left,  pwmL);
-      digitalWrite(dirPin_left,  dL ? HIGH : LOW);
-      analogWrite(pwmPin_right, pwmR);
-      digitalWrite(dirPin_right, dR ? HIGH : LOW);
+    radioFreq.update();
+    if (radioFreq.isDetected()) {
+      rfFrequency = radioFreq.getFrequency();
+      Serial.print("Radio Freq: ");
+      Serial.print(radioFreq.getDetectedType());
+      Serial.print(" (");
+      Serial.print(rfFrequency, 2);
+      Serial.println(" Hz)");
     } else {
-      Serial.println("Malformed payload! (no 0x0F+4 bytes)");
+      rfFrequency = 0.0;
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi lost. Stopping motors and retrying...");
+      stopMotors();
+      tryReconnectWiFi();
+      delay(1000);
+      return;
+    }
+
+    handleUdpPacket([](uint8_t pwmL, bool dirL, uint8_t pwmR, bool dirR) {
+      setMotorPWM(pwmL, dirL, pwmR, dirR);
+    });
+
+    if (udpTimeout(500)) {
+      Serial.println("UDP timeout — stopping motors");
+      stopMotors();
+    }
+    
+    unsigned long now = millis();
+    if (now - lastSendTime >= sendInterval) {
+      lastSendTime = now;
+      magneticDirection = (magneticDirection + 5) % 360;
+      sendStatusPacket();
     }
   }
-  // —— 3. 超时停机 ——  
-  else if (millis() - lastRxTime > RX_TIMEOUT) {
-    Serial.println("RX timeout — stopping motors");
-    analogWrite(pwmPin_left,  0);
-    digitalWrite(dirPin_left,  LOW);
-    analogWrite(pwmPin_right, 0);
-    digitalWrite(dirPin_right, LOW);
-    // 注意：不要重置 lastRxTime！让它继续算
-  }
 
-  }
-  
   if (debug) {
-    // freq_detection(SIGNAL_PIN);
-    // readDuckName(duckName);
-    // Serial.print("Duck name: ");
-    // Serial.println(duckName);
     radioFreq.update();
     if (radioFreq.isDetected()) {
       rfFrequency = radioFreq.getFrequency();
@@ -205,7 +113,3 @@ void loop() {
   
   delay(20);
 }
-
-
-// TODO: we need to use FreeRTOS to prevent blocking
-// TODO: we need to create global variables for the ducks
