@@ -10,7 +10,7 @@ int MagnetPin = 0;
 unsigned long lastRadioHigh=micros();
 float ambient = 0.0;
 int irPin = 2;
-int IRfreq;
+int IRfreq=0;
 unsigned long lastIRHigh = micros();
 
 void get_ambient_reading(){
@@ -43,6 +43,7 @@ void printDetectionResult(const String& signal, const String& field) {
   Serial.println("Radio: " + String(radioFreq));
   Serial.println("Infrared: " + String(IRfreq));
   Serial.println("Magnet: " + field);
+  Serial.println("\n");
 }
 
 void loop() {

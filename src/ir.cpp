@@ -1,10 +1,12 @@
 #include <Arduino.h>
 #include "ir.h"
 
-volatile int f[10], i = 0, m;
+volatile int f[10], i = 0;
 volatile unsigned long l;
 
-void onRadioRising() {
+void onIRRising() {
+  extern int lastIRHigh;
+  extern int IRfreq;
   unsigned long t = micros();
   f[i++] = 1e6 / (t - l);
   l = t;
@@ -17,14 +19,15 @@ void onRadioRising() {
         if (a[k] > a[k + 1]) {
           int tmp = a[k]; a[k] = a[k + 1]; a[k + 1] = tmp;
         }
-    m = (a[4] + a[5]) / 2;
+    IRfreq = (a[4] + a[5]) / 2;
   }
+  lastIRHigh = t;
 }
 
-void setupRadio(int p) {
-  attachInterrupt(digitalPinToInterrupt(p), onRadioRising, RISING);
+void setupIR(int p) {
+  attachInterrupt(digitalPinToInterrupt(p), onIRRising, RISING);
 }
 
-void stopRadio(int p) {
+void stopIR(int p) {
   detachInterrupt(digitalPinToInterrupt(p));
 }

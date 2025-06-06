@@ -1,10 +1,12 @@
 #include "radio.h"
 #include <Arduino.h>
 
-volatile int f[10], i = 0, m;
+volatile int f[10], i = 0;
 volatile unsigned long l;
 
 void onRadioRising() {
+  extern int lastRadioHigh;
+  extern int radioFreq;
   unsigned long t = micros();
   f[i++] = 1e6 / (t - l);
   l = t;
@@ -17,8 +19,9 @@ void onRadioRising() {
         if (a[k] > a[k + 1]) {
           int tmp = a[k]; a[k] = a[k + 1]; a[k + 1] = tmp;
         }
-    m = (a[4] + a[5]) / 2;
+    radioFreq = (a[4] + a[5]) / 2;
   }
+  lastRadioHigh = t;
 }
 
 void setupRadio(int p) {
