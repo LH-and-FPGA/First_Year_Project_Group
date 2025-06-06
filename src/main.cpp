@@ -42,7 +42,7 @@ float get_magnet_direction(){
 void loop() {
   float magnet_direction;
   magnet_direction = get_magnet_direction();
-  if(magnet_direction>=ambient+22){
+  if(magnet_direction>=ambient+25){
     if ((radioFreq < 160) && (radioFreq > 140)){
       Serial.println("Zapple\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up");
     }
