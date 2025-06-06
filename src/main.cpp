@@ -38,47 +38,39 @@ float get_magnet_direction(){
   return val1;
 }
 
+void printDetectionResult(const String& signal, const String& field) {
+  Serial.println(signal);
+  Serial.println("Radio: " + String(radioFreq));
+  Serial.println("Infrared: " + String(IRfreq));
+  Serial.println("Magnet: " + field);
+}
 
 void loop() {
-  float magnet_direction;
-  magnet_direction = get_magnet_direction();
-  if(magnet_direction>=ambient+25){
-    if ((radioFreq < 160) && (radioFreq > 140)){
-      Serial.println("Zapple\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up");
-    }
-    else if((IRfreq < 303) && (IRfreq > 283)){
-      Serial.println("Snorkle\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up");
-    }else{
-      Serial.println("Nothing detected\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Up(False Positive)");
-    }
-  }else if(magnet_direction<=ambient-15){
-    if ((radioFreq < 110) && (radioFreq > 90)){
-      Serial.println("Gribbit\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Down");
-    }
-    else if((IRfreq < 467) && (IRfreq > 447)){
-      Serial.println("Wibbo\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Down");
-    }else{
-        Serial.println("Nothing detected\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nMagnet Down(False Positive)");
-    }
-  }else{
-     if ((radioFreq < 110) && (radioFreq > 90)){
-      Serial.println("Gribbit\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nNo magnetic field detected");
-    }
-    else if((radioFreq < 160) && (radioFreq > 140)){
-      Serial.println("Zapple\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nNo magnetic field detected");
-    }else if((IRfreq < 303) && (IRfreq > 283)){
-      Serial.println("Snorkle\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nNo magnetic field detected");
-    }else if((IRfreq < 467) && (IRfreq > 447)){
-      Serial.println("Wibbo\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nNo magnetic field detected");
-    }else{
-      Serial.println("Nothing detected\nRadio: " + String(radioFreq) + "\nInfrared: " + String(IRfreq) + "\nNo magnetic field detected");
-    }
+  float magnet_direction = get_magnet_direction();
+  String field;
+
+  if (magnet_direction >= ambient + 25) {
+    field = "Up";
+  } else if (magnet_direction <= ambient - 15) {
+    field = "Down";
+  } else {
+    field = "None";
   }
 
-  if (micros() - lastRadioHigh > 100000) {
-    radioFreq = 0;
+  // Determine signal
+  if ((radioFreq > 140 && radioFreq < 160)) {
+    printDetectionResult("Zapple", field);
+  } else if ((IRfreq > 273 && IRfreq < 313)) {
+    printDetectionResult("Snorkle", field);
+  } else if ((radioFreq > 90 && radioFreq < 110)) {
+    printDetectionResult("Gribbit", field);
+  } else if ((IRfreq > 437 && IRfreq < 477)) {
+    printDetectionResult("Wibbo", field);
+  } else {
+    printDetectionResult("Nothing detected", field + (field == "None" ? "" : " (False Positive)"));
   }
-  if (micros() - lastIRHigh > 100000){
-    IRfreq = 0;
-  }
+
+  // Timeout checks
+  if (micros() - lastRadioHigh > 100000) radioFreq = 0;
+  if (micros() - lastIRHigh > 100000) IRfreq = 0;
 }
