@@ -2,6 +2,7 @@
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 #include <SPI.h>
+#include "ir.h"
 #include <freq.h>
 #include "radio_freq.h"
 
